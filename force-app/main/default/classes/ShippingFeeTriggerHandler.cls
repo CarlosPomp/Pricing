@@ -1,0 +1,103 @@
+public with sharing class ShippingFeeTriggerHandler {
+    private static Boolean isEnabled;
+	static {
+		isEnabled = true;
+	}
+	public static Boolean isTriggerEnabled() {
+		return isEnabled;
+	}
+	public static Boolean disableTrigger() {
+		return isEnabled = false;
+	}
+	public static Boolean enableTrigger() {
+		return isEnabled = true;
+	}
+
+    List<ShippingFee__c> oldRecordList { get; set; }
+	List<ShippingFee__c> newRecordList { get; set; }
+
+    public ShippingFeeTriggerHandler(List<ShippingFee__c> oldRecordList, List<ShippingFee__c> newRecordList) {
+        this.oldRecordList = oldRecordList;
+        this.newRecordList = newRecordList;
+    }
+
+    private void validateNoDuplicate() {
+        Set<Id> selfIds = new Set<Id>();
+        Set<Id> productIds = new Set<Id>();
+        Set<Id> locationIds = new Set<Id>();
+
+        for (ShippingFee__c fee : this.newRecordList) {
+            if (fee.Product__c != null) {
+                productIds.add(fee.Product__c);
+            } else {
+                productIds.add(fee.ProductHierarchy__c);
+            }
+            if (fee.City__c != null) {
+                locationIds.add(fee.City__c);
+            } else if (fee.State__c != null) {
+                locationIds.add(fee.State__c);
+            } else {
+                locationIds.add(fee.Country__c);
+            }
+        }
+
+        if (this.oldRecordList != null) {
+            for (ShippingFee__c fee : this.oldRecordList) {
+                selfIds.add(fee.Id);
+            }
+        }
+
+        List<ShippingFee__c> existingFees = [SELECT Id, Product__c, ProductHierarchy__c, City__c, State__c, Country__c FROM ShippingFee__c 
+            WHERE (Product__c IN :productIds OR ProductHierarchy__c IN :productIds) 
+            AND (City__c IN :locationIds OR State__c IN :locationIds OR Country__c IN :locationIds)
+            AND Id NOT IN :selfIds];
+        if (existingFees.size() == 0) { return; }
+
+        Map<Id, List<ShippingFee__c>> existingFeesProductMap = new Map<Id, List<ShippingFee__c>>();
+        Map<Id, List<ShippingFee__c>> existingFeesHierarchyMap = new Map<Id, List<ShippingFee__c>>();
+
+        for (ShippingFee__c fee : existingFees) {
+            if (fee.Product__c != null) {
+                if (!existingFeesProductMap.containsKey(fee.Product__c)) {
+                    existingFeesProductMap.put(fee.Product__c, new List<ShippingFee__c>());
+                }
+                existingFeesProductMap.get(fee.Product__c).add(fee);
+            } else {
+                if (!existingFeesHierarchyMap.containsKey(fee.ProductHierarchy__c)) {
+                    existingFeesHierarchyMap.put(fee.ProductHierarchy__c, new List<ShippingFee__c>());
+                }
+                existingFeesHierarchyMap.get(fee.ProductHierarchy__c).add(fee);
+            }
+        }
+        
+        for (ShippingFee__c newFee : this.newRecordList) {
+            if (newFee.Product__c != null) {
+                for (ShippingFee__c existingFee : existingFeesProductMap.get(newFee.Product__c)) {
+                    if (newFee.City__c == existingFee.City__c &&
+                        newFee.State__c == existingFee.State__c &&
+                        newFee.Country__c == existingFee.Country__c) {
+
+                        newFee.addError('Duplicate shipping fee found.');
+                    }
+                }
+            } else {
+                for (ShippingFee__c existingFee : existingFeesHierarchyMap.get(newFee.ProductHierarchy__c)) {
+                    if (newFee.City__c == existingFee.City__c &&
+                        newFee.State__c == existingFee.State__c &&
+                        newFee.Country__c == existingFee.Country__c) {
+
+                        newFee.addError('Duplicate shipping fee found.');
+                    }
+                }
+            }
+        }
+    }
+
+    public void beforeInsert() {
+        this.validateNoDuplicate();
+    }
+
+    public void beforeUpdate() {
+        this.validateNoDuplicate();
+    }
+}

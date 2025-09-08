@@ -36,7 +36,7 @@ public with sharing class OrderItemTriggerHandler {
         }
     }
 
-    private void SetFullPrice() {
+    private void setFullPrice() {
         Set<Id> newIds = new Set<Id>();
 
         for (OrderItem order : this.newRecordList) {
@@ -66,7 +66,7 @@ public with sharing class OrderItemTriggerHandler {
         }
     }
 
-    private void SearchTaxField() {
+    private void searchTaxField() {
         Set<Id> productIds = new Set<Id>();
         Map<Id,Id> orderToStateMap = new Map<Id,Id>();
         Map<Id,Id> auxiliaryMap = new Map<Id,Id>();
@@ -108,7 +108,7 @@ public with sharing class OrderItemTriggerHandler {
         }
     }
 
-    private void SearchShippingFeeField() {
+    private void searchShippingFeeField() {
         Set<Id> productIds = new Set<Id>();
         Map<Id,Id> cityToStateMap = new Map<Id,Id>();
         Map<Id,Id> cityToCountryMap = new Map<Id,Id>();
@@ -154,67 +154,49 @@ public with sharing class OrderItemTriggerHandler {
             AND (City__c IN :orderToCityMap.values() OR State__c IN :cityToStateMap.values() OR Country__c IN :cityToCountryMap.values())
             AND Status__c = 'Approved'];
         Map<Id, List<ShippingFee__c>> productMap = new Map<Id, List<ShippingFee__c>>();
-        Map<Id, List<ShippingFee__c>> productHierarchyMap = new Map<Id, List<ShippingFee__c>>();
+        Id key;
 
         for (ShippingFee__c fee : shippingFees) {
             if (fee.Product__c != null) {
-                if (!productMap.containsKey(fee.Product__c)) {
-                    productMap.put(fee.Product__c, new List<ShippingFee__c>());
-                }
-                productMap.get(fee.Product__c).add(fee);
+                key = fee.Product__c;
             } else {
-                if (!productHierarchyMap.containsKey(fee.ProductHierarchy__c)) {
-                    productHierarchyMap.put(fee.ProductHierarchy__c, new List<ShippingFee__c>());
-                }
-                productHierarchyMap.get(fee.ProductHierarchy__c).add(fee);
+                key = fee.ProductHierarchy__c;
             }
+            if (!productMap.containsKey(key)) {
+                productMap.put(key, new List<ShippingFee__c>());
+            }
+            productMap.get(key).add(fee);
         }
 
         Boolean ignoreCountry = false;
 
         for (OrderItem orderItem : this.newRecordList) {
             if (productMap.containsKey(orderItem.Product2Id)) {
-                for (ShippingFee__c fee : productMap.get(orderItem.Product2Id)) {
-                    if (fee.City__c != null) {
-                        if (fee.City__c == orderToCityMap.get(orderItem.Id)) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                            break;
-                        }
-                    } else if (fee.State__c != null) {
-                        if (fee.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                            ignoreCountry = true;
-                        }
-                    } else {
-                        if ((fee.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                        }
-                    }
-                }
+                key = orderItem.Product2Id;
+            } else {
+                key = orderToHierarchyMap.get(orderItem.Id);
             }
-            if (productHierarchyMap.containsKey(orderItem.Product2Id)) {
-                for (ShippingFee__c fee : productHierarchyMap.get(orderItem.Product2Id)) {
-                    if (fee.City__c != null) {
-                        if (fee.City__c == orderToCityMap.get(orderItem.Id)) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                            break;
-                        }
-                    } else if (fee.State__c != null) {
-                        if (fee.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                            ignoreCountry = true;
-                        }
-                    } else {
-                        if ((fee.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
-                            orderItem.FreightValue__c = fee.Value__c;
-                        }
+            for (ShippingFee__c fee : productMap.get(key)) {
+                if (fee.City__c != null) {
+                    if (fee.City__c == orderToCityMap.get(orderItem.Id)) {
+                        orderItem.FreightValue__c = fee.Value__c;
+                        break;
+                    }
+                } else if (fee.State__c != null) {
+                    if (fee.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
+                        orderItem.FreightValue__c = fee.Value__c;
+                        ignoreCountry = true;
+                    }
+                } else {
+                    if ((fee.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
+                        orderItem.FreightValue__c = fee.Value__c;
                     }
                 }
             }
         }
     }
 
-    private void SearchMarginField() {
+    private void searchMarginField() {
         Set<Id> productIds = new Set<Id>();
         Map<Id,Id> cityToStateMap = new Map<Id,Id>();
         Map<Id,Id> cityToCountryMap = new Map<Id,Id>();
@@ -274,89 +256,55 @@ public with sharing class OrderItemTriggerHandler {
             AND (Account__c IN :orderToAccountMap.values() OR AccountGroup__c IN :accountToGroupMap.values())
             AND (City__c IN :orderToCityMap.values() OR State__c IN :cityToStateMap.values() OR Country__c IN :cityToCountryMap.values())
             AND Status__c = 'Approved'];
-        Map<Id, Map<Id, List<Margin__c>>> productMap = new Map<Id, Map<Id, List<Margin__c>>>();
-        Map<Id, Map<Id, List<Margin__c>>> productHierarchyMap = new Map<Id, Map<Id, List<Margin__c>>>();
+        Map<String, List<Margin__c>> productMap = new Map<String, List<Margin__c>>();
+        Id key;
+        Id accountKey;
+        String productPlusAccountKey;
 
         for (Margin__c margin : margins) {
             if (margin.Product__c != null) {
-                if (!productMap.containsKey(margin.Product__c)) {
-                    productMap.put(margin.Product__c, new Map<Id, List<Margin__c>>());
-                }
-                if (margin.Account__c != null) {
-                    if (!productMap.get(margin.Product__c).containsKey(margin.Account__c)) {
-                        productMap.get(margin.Product__c).put(margin.Account__c, new List<Margin__c>());
-                    }
-                    productMap.get(margin.Product__c).get(margin.Account__c).add(margin);
-                } else {
-                    if (!productMap.get(margin.Product__c).containsKey(margin.AccountGroup__c)) {
-                        productMap.get(margin.Product__c).put(margin.AccountGroup__c, new List<Margin__c>());
-                    }
-                    productMap.get(margin.Product__c).get(margin.AccountGroup__c).add(margin);
-                }
+                key = margin.Product__c;
             } else {
-                if (!productHierarchyMap.containsKey(margin.Product_Hierarchy__c)) {
-                    productHierarchyMap.put(margin.Product_Hierarchy__c, new Map<Id, List<Margin__c>>());
-                }
-                if (margin.Account__c != null) {
-                    if (!productHierarchyMap.get(margin.Product__c).containsKey(margin.Account__c)) {
-                        productHierarchyMap.get(margin.Product__c).put(margin.Account__c, new List<Margin__c>());
-                    }
-                    productHierarchyMap.get(margin.Product__c).get(margin.Account__c).add(margin);
-                } else {
-                    if (!productHierarchyMap.get(margin.Product__c).containsKey(margin.AccountGroup__c)) {
-                        productHierarchyMap.get(margin.Product__c).put(margin.AccountGroup__c, new List<Margin__c>());
-                    }
-                    productHierarchyMap.get(margin.Product__c).get(margin.AccountGroup__c).add(margin);
-                }
+                key = margin.Product_Hierarchy__c;
             }
+            if (margin.Account__c != null) {
+                accountKey = margin.Account__c;
+            } else {
+                accountKey = margin.AccountGroup__c;
+            }
+            productPlusAccountKey = key + '-' + accountKey;
+            if (!productMap.containsKey(productPlusAccountKey)) {
+                productMap.put(productPlusAccountKey, new List<Margin__c>());
+            }
+            productMap.get(productPlusAccountKey).add(margin);
         }
 
         Boolean ignoreCountry = false;
 
         for (OrderItem orderItem : this.newRecordList) {
             if (productMap.containsKey(orderItem.Product2Id)) {
-                Id orderAccount = orderToAccountMap.get(orderItem.OrderId);
-                if (!productMap.get(orderItem.Product2Id).containsKey(orderAccount)) {
-                    orderAccount = accountToGroupMap.get(orderAccount);
-                }
-                for (Margin__c margin : productMap.get(orderItem.Product2Id).get(orderAccount)) {
-                    if (margin.City__c != null) {
-                        if (margin.City__c == orderToCityMap.get(orderItem.Id)) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                            break;
-                        }
-                    } else if (margin.State__c != null) {
-                        if (margin.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                            ignoreCountry = true;
-                        }
-                    } else {
-                        if ((margin.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                        }
-                    }
-                }
+                key = orderItem.Product2Id;
+            } else {
+                key = orderToHierarchyMap.get(orderItem.Id);
             }
-            if (productHierarchyMap.containsKey(orderItem.Product2Id)) {
-                Id orderAccount = orderToAccountMap.get(orderItem.OrderId);
-                if (!productHierarchyMap.get(orderItem.Product2Id).containsKey(orderAccount)) {
-                    orderAccount = accountToGroupMap.get(orderAccount);
-                }
-                for (Margin__c margin : productHierarchyMap.get(orderItem.Product2Id).get(orderAccount)) {
-                    if (margin.City__c != null) {
-                        if (margin.City__c == orderToCityMap.get(orderItem.Id)) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                            break;
-                        }
-                    } else if (margin.State__c != null) {
-                        if (margin.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                            ignoreCountry = true;
-                        }
-                    } else {
-                        if ((margin.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
-                            orderItem.Margin_Percentage__c = margin.Value__c;
-                        }
+            if (!productMap.containsKey(String.valueOf(key) + '-' + accountKey)) {
+                accountKey = accountToGroupMap.get(accountKey);
+            }
+            productPlusAccountKey = String.valueOf(key) + '-' + accountKey;
+            for (Margin__c margin : productMap.get(productPlusAccountKey)) {
+                if (margin.City__c != null) {
+                    if (margin.City__c == orderToCityMap.get(orderItem.Id)) {
+                        orderItem.Margin_Percentage__c = margin.Value__c;
+                        break;
+                    }
+                } else if (margin.State__c != null) {
+                    if (margin.State__c == cityToStateMap.get(orderToCityMap.get(orderItem.Id))) {
+                        orderItem.Margin_Percentage__c = margin.Value__c;
+                        ignoreCountry = true;
+                    }
+                } else {
+                    if ((margin.Country__c == cityToCountryMap.get(orderToCityMap.get(orderItem.Id))) && !ignoreCountry) {
+                        orderItem.Margin_Percentage__c = margin.Value__c;
                     }
                 }
             }
@@ -365,19 +313,19 @@ public with sharing class OrderItemTriggerHandler {
 
     public void beforeInsert() {
         this.verifyActivation();
-        this.SearchTaxField();
-        this.SearchShippingFeeField();
-        this.SearchMarginField();
-        this.SetFullPrice();
+        this.searchTaxField();
+        this.searchShippingFeeField();
+        this.searchMarginField();
+        this.setFullPrice();
         this.setDiscount();
     }
 
     public void beforeUpdate() {
         this.verifyActivation();
-        this.SearchTaxField();
-        this.SearchShippingFeeField();
-        this.SearchMarginField();
-        this.SetFullPrice();
+        this.searchTaxField();
+        this.searchShippingFeeField();
+        this.searchMarginField();
+        this.setFullPrice();
         this.setDiscount();
     }
 }

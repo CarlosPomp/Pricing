@@ -60,65 +60,47 @@ public with sharing class MarginTriggerHandler {
             AND Id NOT IN :selfIds];
         if (existingMargins.size() == 0) { return; }
 
-        Map<Id, Map<Id, List<Margin__c>>> existingMarginsProductMap = new Map<Id, Map<Id, List<Margin__c>>>();
-        Map<Id, Map<Id, List<Margin__c>>> existingMarginHierarchyMap = new Map<Id, Map<Id, List<Margin__c>>>();
+        Map<String, List<Margin__c>> existingMarginsProductMap = new Map<String, List<Margin__c>>();
+        Id key;
+        Id accountKey;
+        String productPlusAccountKey;
 
         for (Margin__c margin : existingMargins) {
             if (margin.Product__c != null) {
-                if (!existingMarginsProductMap.containsKey(margin.Product__c)) {
-                    existingMarginsProductMap.put(margin.Product__c, new Map<Id, List<Margin__c>>());
-                }
-                if (margin.Account__c != null) {
-                    if (!existingMarginsProductMap.get(margin.Product__c).containsKey(margin.Account__c)) {
-                        existingMarginsProductMap.get(margin.Product__c).put(margin.Account__c, new List<Margin__c>());
-                    }
-                    existingMarginsProductMap.get(margin.Product__c).get(margin.Account__c).add(margin);
-                } else {
-                    if (!existingMarginsProductMap.get(margin.Product__c).containsKey(margin.AccountGroup__c)) {
-                        existingMarginsProductMap.get(margin.Product__c).put(margin.AccountGroup__c, new List<Margin__c>());
-                    }
-                    existingMarginsProductMap.get(margin.Product__c).get(margin.AccountGroup__c).add(margin);
-                }
+                key = margin.Product__c;
             } else {
-                if (!existingMarginHierarchyMap.containsKey(margin.Product_Hierarchy__c)) {
-                    existingMarginHierarchyMap.put(margin.Product_Hierarchy__c, new Map<Id, List<Margin__c>>());
-                }
-                if (margin.Account__c != null) {
-                    if (!existingMarginHierarchyMap.get(margin.Product__c).containsKey(margin.Account__c)) {
-                        existingMarginHierarchyMap.get(margin.Product__c).put(margin.Account__c, new List<Margin__c>());
-                    }
-                    existingMarginHierarchyMap.get(margin.Product__c).get(margin.Account__c).add(margin);
-                } else {
-                    if (!existingMarginHierarchyMap.get(margin.Product__c).containsKey(margin.AccountGroup__c)) {
-                        existingMarginHierarchyMap.get(margin.Product__c).put(margin.AccountGroup__c, new List<Margin__c>());
-                    }
-                    existingMarginHierarchyMap.get(margin.Product__c).get(margin.AccountGroup__c).add(margin);
-                }
+                key = margin.Product_Hierarchy__c;
             }
+            if (margin.Account__c != null) {
+                accountKey = margin.Account__c;
+            } else {
+                accountKey = margin.AccountGroup__c;
+            }
+            productPlusAccountKey = String.valueOf(key) + '-' + accountKey;
+            if (!existingMarginsProductMap.containsKey(productPlusAccountKey)) {
+                existingMarginsProductMap.put(productPlusAccountKey, new List<Margin__c>());
+            }
+            existingMarginsProductMap.get(productPlusAccountKey).add(margin);
         }
         
         for (Margin__c newMargin : this.newRecordList) {
-            Id orderAccount = null;
-            if (newMargin.Account__c != null) {
-                orderAccount = newMargin.Account__c;
-            }
             if (newMargin.Product__c != null) {
-                for (Margin__c existingMargin : existingMarginsProductMap.get(newMargin.Product__c).get(orderAccount)) {
-                    if (newMargin.City__c == existingMargin.City__c &&
-                        newMargin.State__c == existingMargin.State__c &&
-                        newMargin.Country__c == existingMargin.Country__c) {
-
-                        newMargin.addError('Duplicate shipping fee found.');
-                    }
-                }
+                key = newMargin.Product__c;
             } else {
-                for (Margin__c existingMargin : existingMarginHierarchyMap.get(newMargin.Product_Hierarchy__c).get(orderAccount)) {
-                    if (newMargin.City__c == existingMargin.City__c &&
-                        newMargin.State__c == existingMargin.State__c &&
-                        newMargin.Country__c == existingMargin.Country__c) {
+                key = newMargin.Product_Hierarchy__c;
+            }
+            if (newMargin.Account__c != null) {
+                accountKey = newMargin.Account__c;
+            } else {
+                accountKey = newMargin.AccountGroup__c;
+            }
+            productPlusAccountKey = String.valueOf(key) + '-' + accountKey;
+            for (Margin__c existingMargin : existingMarginsProductMap.get(productPlusAccountKey)) {
+                if (newMargin.City__c == existingMargin.City__c &&
+                    newMargin.State__c == existingMargin.State__c &&
+                    newMargin.Country__c == existingMargin.Country__c) {
 
-                        newMargin.addError('Duplicate shipping fee found.');
-                    }
+                    newMargin.addError('Duplicate shipping fee found.');
                 }
             }
         }

@@ -54,40 +54,32 @@ public with sharing class ShippingFeeTriggerHandler {
         if (existingFees.size() == 0) { return; }
 
         Map<Id, List<ShippingFee__c>> existingFeesProductMap = new Map<Id, List<ShippingFee__c>>();
-        Map<Id, List<ShippingFee__c>> existingFeesHierarchyMap = new Map<Id, List<ShippingFee__c>>();
+        Id key;
 
         for (ShippingFee__c fee : existingFees) {
             if (fee.Product__c != null) {
-                if (!existingFeesProductMap.containsKey(fee.Product__c)) {
-                    existingFeesProductMap.put(fee.Product__c, new List<ShippingFee__c>());
-                }
-                existingFeesProductMap.get(fee.Product__c).add(fee);
+                key = fee.Product__c;
             } else {
-                if (!existingFeesHierarchyMap.containsKey(fee.ProductHierarchy__c)) {
-                    existingFeesHierarchyMap.put(fee.ProductHierarchy__c, new List<ShippingFee__c>());
-                }
-                existingFeesHierarchyMap.get(fee.ProductHierarchy__c).add(fee);
+                key = fee.ProductHierarchy__c;
             }
+            if (!existingFeesProductMap.containsKey(key)) {
+                existingFeesProductMap.put(key, new List<ShippingFee__c>());
+            }
+            existingFeesProductMap.get(key).add(fee);
         }
         
         for (ShippingFee__c newFee : this.newRecordList) {
             if (newFee.Product__c != null) {
-                for (ShippingFee__c existingFee : existingFeesProductMap.get(newFee.Product__c)) {
-                    if (newFee.City__c == existingFee.City__c &&
-                        newFee.State__c == existingFee.State__c &&
-                        newFee.Country__c == existingFee.Country__c) {
-
-                        newFee.addError('Duplicate shipping fee found.');
-                    }
-                }
+                key = newFee.Product__c;
             } else {
-                for (ShippingFee__c existingFee : existingFeesHierarchyMap.get(newFee.ProductHierarchy__c)) {
-                    if (newFee.City__c == existingFee.City__c &&
-                        newFee.State__c == existingFee.State__c &&
-                        newFee.Country__c == existingFee.Country__c) {
+                key = newFee.ProductHierarchy__c;
+            }
+            for (ShippingFee__c existingFee : existingFeesProductMap.get(key)) {
+                if (newFee.City__c == existingFee.City__c &&
+                    newFee.State__c == existingFee.State__c &&
+                    newFee.Country__c == existingFee.Country__c) {
 
-                        newFee.addError('Duplicate shipping fee found.');
-                    }
+                    newFee.addError('Duplicate shipping fee found.');
                 }
             }
         }

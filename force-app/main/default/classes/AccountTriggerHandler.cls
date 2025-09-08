@@ -21,28 +21,7 @@ public with sharing class AccountTriggerHandler {
         this.newRecordList = newRecordList;
     }
 
-    private void verifyOrders() {
-        Set<Id> selfIds = new Set<Id>();
-
-        for (Account account : this.newRecordList) {
-            selfIds.add(account.Id);
-        }
-
-        List<Order> ordersPresent = [SELECT Id, AccountId FROM Order WHERE AccountId IN :selfIds];
-        Set<Id> accountOrderIds = new Set<Id>();
-
-        for (Order order : ordersPresent) {
-            accountOrderIds.add(order.AccountId);
-        }
-
-        for (Account account : this.newRecordList) {
-            if (accountOrderIds.contains(account.Id)) {
-                account.addError('Cannot delete account with orders');
-            }
-        }
-    }
-
     public void beforeUpdate() {
-        this.verifyOrders();
+        AccountTriggerHelper.verifyOrders(this.newRecordList);
     }
 }

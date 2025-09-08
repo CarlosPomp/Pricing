@@ -21,16 +21,7 @@ public with sharing class OrderTriggerHandler {
         this.newRecordList = newRecordList;
     }
 
-    private void verifyActivation() {
-        List<Order> orders = [SELECT Id, Status FROM Order WHERE Id IN :this.newRecordList];
-        for (Order order : orders) {
-            if (order.Status != 'Draft' || order.Status != 'In Progress') {
-                order.addError('Cannot modify activated order');
-            }
-        }
-    }
-
     public void beforeUpdate() {
-        verifyActivation();
+        OrderTriggerHelper.verifyActivation(this.newRecordList);
     }
 }

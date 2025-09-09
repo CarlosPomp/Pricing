@@ -10,31 +10,30 @@ public with sharing class OrderItemTriggerHelper {
     private static void verifyActivation(List<OrderItem> recordList) {
         List<OrderItem> orders = [SELECT Id, Order.Status FROM OrderItem WHERE Id IN :recordList];
         for (OrderItem order : orders) {
-            if (order.Order.Status != 'Draft' || order.Order.Status != 'In Progress') {
+            if (order.Order.Status != 'Draft' && order.Order.Status != 'In Progress') {
                 order.addError('Cannot create order item on activated order');
             }
         }
     }
     
     private static void setFullPrice(List<OrderItem> recordList) {
-        Set<Id> newIds = new Set<Id>();
+        Set<Id> productIds = new Set<Id>();
 
         for (OrderItem order : recordList) {
-            newIds.add(order.Id);
+            productIds.add(order.Product2Id);
         }
 
-        List<OrderItem> broaderRecordList = [SELECT Id, Product2.ProductionCost__c, FullPrice__c, FreightValue__c, TaxPercentage__c, Margin_Percentage__c 
-            FROM OrderItem WHERE Id IN :newIds];
+        List<Product2> products = [SELECT Id, ProductionCost__c FROM Product2 WHERE Id IN :productIds];
+        Map<Id, Product2> productCostMap = new Map<Id, Product2>(products);
 
-        for (OrderItem order : broaderRecordList) {
-            if (order.TaxPercentage__c == null || order.Margin_Percentage__c == null || order.FullPrice__c == null) {
+        for (OrderItem order : recordList) {
+            if (order.TaxPercentage__c == null || order.Margin_Percentage__c == null || order.FreightValue__c == null) {
                 order.addError('Selling of this product is not authorized due to lack of parameters, please contact your pricing team.');
             } else {
-                Decimal fullPrice = order.Product2.ProductionCost__c + order.FreightValue__c;
+                Decimal fullPrice = productCostMap.get(order.Product2Id).ProductionCost__c + order.FreightValue__c;
                 fullPrice += (fullPrice * order.TaxPercentage__c / 100);
                 fullPrice += (fullPrice * order.Margin_Percentage__c / 100);
-                order.FullPrice__c = fullPrice;
-                order.FullPrice__c = order.FullPrice__c.setScale(2);
+                order.FullPrice__c = fullPrice.setScale(2);
             }
         }
     }
@@ -209,7 +208,7 @@ public with sharing class OrderItemTriggerHelper {
         joinMap(orderToCityMap, auxiliaryMap);
         auxiliaryMap.clear();
 
-        for (Order order : [SELECT Id, AccountId FROM Order WHERE Id IN :orderToCityMap.values()]) {
+        for (Order order : [SELECT Id, AccountId FROM Order WHERE Id IN :orderToAccountMap.values()]) {
             auxiliaryMap.put(order.Id, order.AccountId);
         }
 
@@ -236,7 +235,8 @@ public with sharing class OrderItemTriggerHelper {
             AND (Account__c IN :orderToAccountMap.values() OR AccountGroup__c IN :accountToGroupMap.values())
             AND (City__c IN :orderToCityMap.values() OR State__c IN :cityToStateMap.values() OR Country__c IN :cityToCountryMap.values())
             AND Status__c = 'Approved'];
-        Map<String, List<Margin__c>> productMap = new Map<String, List<Margin__c>>();
+        Set<Id> productSet = new Set<Id>();
+        Map<String, List<Margin__c>> productPlusAccountMap = new Map<String, List<Margin__c>>();
         Id key;
         Id accountKey;
         String productPlusAccountKey;
@@ -253,25 +253,28 @@ public with sharing class OrderItemTriggerHelper {
                 accountKey = margin.AccountGroup__c;
             }
             productPlusAccountKey = key + '-' + accountKey;
-            if (!productMap.containsKey(productPlusAccountKey)) {
-                productMap.put(productPlusAccountKey, new List<Margin__c>());
+            if (!productPlusAccountMap.containsKey(productPlusAccountKey)) {
+                productPlusAccountMap.put(productPlusAccountKey, new List<Margin__c>());
             }
-            productMap.get(productPlusAccountKey).add(margin);
+            productSet.add(key);
+            productPlusAccountMap.get(productPlusAccountKey).add(margin);
         }
 
         Boolean ignoreCountry = false;
 
         for (OrderItem orderItem : recordList) {
-            if (productMap.containsKey(orderItem.Product2Id)) {
+            if (productSet.contains(orderItem.Product2Id)) {
                 key = orderItem.Product2Id;
             } else {
                 key = orderToHierarchyMap.get(orderItem.Id);
             }
-            if (!productMap.containsKey(String.valueOf(key) + '-' + accountKey)) {
-                accountKey = accountToGroupMap.get(accountKey);
+            if (productPlusAccountMap.containsKey(key + '-' + orderToAccountMap.get(orderItem.Id))) {
+                accountKey = orderToAccountMap.get(orderItem.Id);
+            } else {
+                accountKey = accountToGroupMap.get(orderToAccountMap.get(orderItem.Id));
             }
-            productPlusAccountKey = String.valueOf(key) + '-' + accountKey;
-            for (Margin__c margin : productMap.get(productPlusAccountKey)) {
+            productPlusAccountKey = key + '-' + accountKey;
+            for (Margin__c margin : productPlusAccountMap.get(productPlusAccountKey)) {
                 if (margin.City__c != null) {
                     if (margin.City__c == orderToCityMap.get(orderItem.Id)) {
                         orderItem.Margin_Percentage__c = margin.Value__c;

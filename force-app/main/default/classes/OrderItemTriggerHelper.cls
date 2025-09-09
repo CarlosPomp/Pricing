@@ -40,8 +40,10 @@ public with sharing class OrderItemTriggerHelper {
 
     private static void setDiscount(List<OrderItem> recordList) {
         for (OrderItem order : recordList) {
-            order.Discount__c = 100*(order.FullPrice__c - order.UnitPrice)/order.FullPrice__c;
-            order.Discount__c = order.Discount__c.setScale(2);
+            if (order.FullPrice__c != null) {
+                order.Discount__c = 100*(order.FullPrice__c - order.UnitPrice)/order.FullPrice__c;
+                order.Discount__c = order.Discount__c.setScale(2);
+            }
         }
     }
 
@@ -274,6 +276,9 @@ public with sharing class OrderItemTriggerHelper {
                 accountKey = accountToGroupMap.get(orderToAccountMap.get(orderItem.Id));
             }
             productPlusAccountKey = key + '-' + accountKey;
+            if (!productPlusAccountMap.containsKey(productPlusAccountKey)) {
+                continue;
+            }
             for (Margin__c margin : productPlusAccountMap.get(productPlusAccountKey)) {
                 if (margin.City__c != null) {
                     if (margin.City__c == orderToCityMap.get(orderItem.Id)) {

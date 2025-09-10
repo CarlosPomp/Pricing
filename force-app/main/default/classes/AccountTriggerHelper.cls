@@ -1,6 +1,4 @@
 public with sharing class AccountTriggerHelper {
-    public AccountTriggerHelper() {}
-
     public static void verifyOrders(List<Account> newRecordList) {
         Set<Id> selfIds = new Set<Id>();
 
@@ -17,7 +15,7 @@ public with sharing class AccountTriggerHelper {
 
         for (Account account : newRecordList) {
             if (accountOrderIds.contains(account.Id)) {
-                account.addError('Cannot delete account with orders');
+                account.addError('Cannot update account with orders');
             }
         }
     }

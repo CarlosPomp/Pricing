@@ -1,6 +1,4 @@
 public with sharing class MarginTriggerHelper {
-    public MarginTriggerHelper() {}
-
     public static void validateNoDuplicate(List<Margin__c> oldRecordList, List<Margin__c> newRecordList) {
         Set<Id> selfIds = new Set<Id>();
         Set<Id> productIds = new Set<Id>();
@@ -80,7 +78,7 @@ public with sharing class MarginTriggerHelper {
                     newMargin.State__c == existingMargin.State__c &&
                     newMargin.Country__c == existingMargin.Country__c) {
 
-                    newMargin.addError('Duplicate shipping fee found.');
+                    newMargin.addError('Duplicate margin found.');
                 }
             }
         }

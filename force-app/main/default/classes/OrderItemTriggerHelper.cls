@@ -1,6 +1,4 @@
 public with sharing class OrderItemTriggerHelper {
-    public OrderItemTriggerHelper() {}
-
     private static void joinMap(Map<Id,Id> map1, Map<Id,Id> map2) {
         for (Id key: map1.keySet()) {  
             map1.put(key, map2.get(map1.get(key)));

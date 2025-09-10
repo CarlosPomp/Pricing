@@ -1,6 +1,4 @@
 public with sharing class ShippingFeeTriggerHelper {
-    public ShippingFeeTriggerHelper() {}
-
     public static void validateNoDuplicate(List<ShippingFee__c> oldRecordList, List<ShippingFee__c> newRecordList) {
         Set<Id> selfIds = new Set<Id>();
         Set<Id> productIds = new Set<Id>();

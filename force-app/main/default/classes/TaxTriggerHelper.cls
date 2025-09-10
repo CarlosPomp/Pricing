@@ -1,6 +1,4 @@
 public with sharing class TaxTriggerHelper {
-    public TaxTriggerHelper() {}
-
     public static void validateNoDuplicate(List<Tax__c> oldRecordList, List<Tax__c> newRecordList) {
         Set<Id> setIds = new Set<Id>();
         Set<Id> productIds = new Set<Id>();

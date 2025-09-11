@@ -31,13 +31,21 @@ private class MarginTriggerHelper_Test {
         Product2 product = (Product2) testFactory.createSObject(new Product2(ProductHierarchy__c = productHierarchy.Id));
         insert product;
 
-        Margin__c margin = (Margin__c) testFactory.createSObject(new Margin__c(
+        Margin__c margin1 = (Margin__c) testFactory.createSObject(new Margin__c(
             Product__c = product.Id,
             Account__c = account.Id,
             City__c = city.Id,
             DistributionCenter__c = distributionCenter.Id,
             Value__c = 10));
-        insert margin;
+        
+        Margin__c margin2 = (Margin__c) testFactory.createSObject(new Margin__c(
+            Product_Hierarchy__c = productHierarchy.Id,
+            AccountGroup__c = accountGroup.Id,
+            City__c = city.Id,
+            DistributionCenter__c = distributionCenter.Id,
+            Value__c = 12));
+        
+        insert new List<Margin__c>{margin1, margin2};
     }
 
     @isTest
@@ -46,9 +54,14 @@ private class MarginTriggerHelper_Test {
         Product2 product = [SELECT Id FROM Product2 LIMIT 1];
         City__c city = [SELECT Id, State__c FROM City__c LIMIT 1];
         DistributionCenter__c distributionCenter = [SELECT Id FROM DistributionCenter__c LIMIT 1];
-        Margin__c margin = [SELECT Id FROM Margin__c LIMIT 1];
-        margin.City__c = null;
+
+        Margin__c margin = new Margin__c();
+
+        margin.Product__c = product.Id;
+        margin.Account__c = account.Id;
         margin.State__c = city.State__c;
+        margin.DistributionCenter__c = distributionCenter.Id;
+        margin.Status__c = 'Approved';
         margin.Value__c = 15;
 
         Database.SaveResult result = Database.insert(margin, false);
@@ -63,12 +76,38 @@ private class MarginTriggerHelper_Test {
         Product2 product = [SELECT Id FROM Product2 LIMIT 1];
         City__c city = [SELECT Id FROM City__c LIMIT 1];
         DistributionCenter__c distributionCenter = [SELECT Id FROM DistributionCenter__c LIMIT 1];
-        Margin__c margin = [SELECT Id FROM Margin__c LIMIT 1];
+
+        Margin__c margin = new Margin__c();
+        margin.Product__c = product.Id;
+        margin.Account__c = account.Id;
+        margin.City__c = city.Id;
+        margin.DistributionCenter__c = distributionCenter.Id;
+        margin.Value__c = 15;
 
         Database.SaveResult result = Database.insert(margin, false);
 
         System.assert(!result.isSuccess());
         System.assert(result.getErrors().size() > 0);
-        System.assertEquals('Duplicate margin found', result.getErrors()[0].getMessage());
+        System.assertEquals('Duplicate margin found.', result.getErrors()[0].getMessage());
+    }
+
+    @isTest
+    static void testUpdateIntoADuplicateMargin() {
+        Account account = [SELECT Id FROM Account LIMIT 1];
+        Product2 product = [SELECT Id FROM Product2 LIMIT 1];
+        City__c city = [SELECT Id FROM City__c LIMIT 1];
+        DistributionCenter__c distributionCenter = [SELECT Id FROM DistributionCenter__c LIMIT 1];
+
+        Margin__c margin = [SELECT Id FROM Margin__c WHERE Value__c = 12 LIMIT 1];
+        margin.Product__c = product.Id;
+        margin.Account__c = account.Id;
+        margin.City__c = city.Id;
+        margin.DistributionCenter__c = distributionCenter.Id;
+
+        Database.SaveResult result = Database.update(margin, false);
+
+        System.assert(!result.isSuccess());
+        System.assert(result.getErrors().size() > 0);
+        System.assertEquals('Duplicate margin found.', result.getErrors()[0].getMessage());
     }
 }

@@ -1,4 +1,4 @@
-@RestResource(urlMapping='/order/*')
+@RestResource(urlMapping='/upsertOrder/*')
 global with sharing class OrderManager {
     private static List<Order> getInternalOrderIds(List<Order> orders) {
         Set<String> accountIds = new Set<String>();

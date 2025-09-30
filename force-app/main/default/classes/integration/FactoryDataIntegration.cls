@@ -1,114 +1,106 @@
 public with sharing class FactoryDataIntegration {
-       
-    //Object validation of required fields, adding error response and objects for upsert
-    @TestVisible
-    private static void validateObject(String fieldId, String fieldKey, SObject data, List<SObject> listToUpsert, List<DataIntegrationFields.Response> responseList, List<String> requiredField){
-        DataIntegrationFields.Response response = new DataIntegrationFields.Response();
-        if (responseList instanceOf List<DataIntegrationFields.ResponseParent>) {
+	// Conversion of the template list into the object list
+	public static String convertSObject(SObject sobjectType, String service, List<DataIntegrationFields.FieldData> fieldDataList,
+										List<DataIntegrationFields.Response> responseList, List<SObject> listToUpsert) {
+		String orderExternalIds = '';
+		String sobjectName = String.valueOf(sobjectType.getSObjectType());
+		Type t = Type.forName('DataIntegrationFields.' + sobjectName.replaceAll('__c|__mdt|__|_', '') + service + 'Data');
+
+		if (t == null) throw new FactoryDataIntegrationException('Invalid defaults class.');
+
+		DataIntegrationFields.FieldData defaults = (DataIntegrationFields.FieldData) t.newInstance();
+
+		for (DataIntegrationFields.FieldData obj : fieldDataList) {
+			orderExternalIds += orderExternalIds == '' ? obj.getExternalId() : ', ' + obj.getExternalId();
+			validateObject(defaults.getFieldId(), defaults.getFieldKey(), obj.serialize(), listToUpsert, responseList, defaults.getRequiredFields());
+		}
+
+		return orderExternalIds;
+	}
+
+	// Object validation of required fields, adding error response and objects for upsert
+	@TestVisible
+	private static void validateObject(String fieldId, String fieldKey, SObject data, List<SObject> listToUpsert,
+										List<DataIntegrationFields.Response> responseList, List<String> requiredField) {
+		DataIntegrationFields.Response response = new DataIntegrationFields.Response();
+
+		if (responseList instanceOf List<DataIntegrationFields.ResponseParent>)
 			response = new DataIntegrationFields.ResponseParent();
-        }
-        response.status = true;
-        
-        for (String field : requiredField) {
-            if (IntegrationUtils.convertEmptyString(data.get(field) + '')) {
-                if (String.isNotEmpty((String)data.get(fieldId))){
-                    response.error(
-                        data.get(fieldId) + '',
-                        data.get(fieldKey) + '',
-                        'Valor inválido para o campo obrigatório: ' + field,
-                        String.valueOf(listToUpsert.getSObjectType())
-                    );
-                }
-                else {
-                    response.error(
-                        data.get(fieldKey) + '',
-                        'Valor inválido para o campo obrigatório: ' + field,
-                        String.valueOf(listToUpsert.getSObjectType())
-                    );
-                }
-                
-                System.debug(response);
-            	break;
-            }
-        }
+		response.hasError = false;
 
-        if(response.status){
-            listToUpsert.add(data);
-        }
-        else{
-            responseList.add(response);
-        }
-    }
+		for (String field : requiredField) {
+			if (IntegrationUtils.checkEmptyString((Object)data.get(field))) {
+				if (String.isNotEmpty((String)data.get(fieldId))) {
+					response.error(
+						(String)data.get(fieldId),
+						(String)data.get(fieldKey),
+						'Valor inválido para o campo obrigatório => ' + field,
+						String.valueOf(listToUpsert.getSObjectType())
+					);
+				}
+				else {
+					response.error(
+						(String)data.get(fieldKey),
+						'Valor inválido para o campo obrigatório => ' + field,
+						String.valueOf(listToUpsert.getSObjectType())
+					);
+				}
 
-    //Conversion of the template list into the object list
-    public static void convertSObject(SObject sObj, String service, List<DataIntegrationFields.FieldData> fieldDataList, List<DataIntegrationFields.Response> responseList, List<SObject> listToUpsert) {
+				System.debug('Error Parent Object => ' + response);
+				break;
+			}
+		}
 
-        String sObjectName = String.valueOf(sObj.getSObjectType());
+		if (!response.hasError) listToUpsert.add(data);
+		else responseList.add(response);
+	}
 
-        Type t = Type.forName('DataIntegrationFields.' + sObjectName.replaceAll('__c|__mdt|__|_', '') +service+ 'Data');
+	//Object child validation of required fields, adding error response and objects for upsert
+	@TestVisible
+	private static void validateObjectChild(DataIntegrationFields.FieldDataChild obj, String fieldKey, SObject data, List<SObject> listToUpsert,
+											List<String> requiredField, Map<String, List<DataIntegrationFields.Response>> responseMap) {
+		DataIntegrationFields.Response response = new DataIntegrationFields.Response();
+		response.hasError = false;
 
-        if (t == null) {
-            throw new FactoryDataIntegrationException('Invalid defaults class.');
-        }
+		for (String field : requiredField) {
+			if (IntegrationUtils.checkEmptyString((Object)data.get(field))) {
+				response.error(
+					(String)data.get(fieldKey),
+					'Valor inválido para o campo obrigatório => ' + field,
+					String.valueOf(listToUpsert.getSObjectType())
+				);
 
-        DataIntegrationFields.FieldData defaults = (eDataIntegrationFields.FieldData) t.newInstance();
+				System.debug('Error Child Object' + response);
+				break;
+			}
+		}
 
-        for (DataIntegrationFields.FieldData Obj : fieldDataList) {
-            validateObject(defaults.getFieldId(), defaults.getFieldKey(), Obj.serialize(), listToUpsert, responseList, defaults.getRequiredFields());
-        }
-    }
+		if (!response.hasError) listToUpsert.add(data);
+		else {
+			if (!responseMap.containsKey(obj.getParentKey()))
+				responseMap.put(obj.getParentKey(), new List<DataIntegrationFields.Response>());
+			responseMap.get(obj.getParentKey()).add(response);
+		}
+	}
 
-    //Object child validation of required fields, adding error response and objects for upsert
-    @TestVisible
-    private static void validateObjectChild(String fieldKey, SObject data, List<SObject> listToUpsert, Map<String, List<DataIntegrationFields.Response>> responseMap, List<String> requiredField, Map<String, String> parentMapKeys){
-        DataIntegrationFields.Response response = new DataIntegrationFields.Response();
-        response.status = true;
-        system.debug(requiredField);
-        for (String field : requiredField) {
-            system.debug(data.get(field)+'');
+	//Conversion of the template list into the object child list
+	public static void convertSObjectChild(SObject sObj, String service, List<DataIntegrationFields.FieldDataChild> fieldDataList,
+											Map<String, List<DataIntegrationFields.Response>> responseMap, List<SObject> listToUpsert) {
+		String sObjectName = String.valueOf(sObj.getSObjectType());
+		Type classType = Type.forName('DataIntegrationFields.' + sObjectName.replaceAll('__c|__mdt|__|_', '') + service + 'Data');
 
-            if(IntegrationUtils.convertEmptyString(data.get(field)+'')){
-                response.error(data.get(fieldKey)+'', 'Valor inválido para o campo obrigatório: '+field, String.valueOf(listToUpsert.getSObjectType()));
-                system.debug(response);
-            	break;
-            }
-        }
-        if(response.status){
-            listToUpsert.add(data);
-        }
-        else {
-            System.debug(parentMapKeys.get(data.get(fieldKey) + ''));
-            if(responseMap.keySet().contains(parentMapKeys.get(data.get(fieldKey) + ''))){
-                responseMap.get(parentMapKeys.get(data.get(fieldKey) + '')).add(response);
-            }
-            else{
-                responseMap.put(parentMapKeys.get(data.get(fieldKey) + ''), new List<DataIntegrationFields.Response>{response});
-            }
-        }
-    }
+		if (classType == null) throw new FactoryDataIntegrationException('Invalid defaults class.');
 
-    //Conversion of the template list into the object child list
-    public static void convertSObjectChild(SObject sObj, String service, List<DataIntegrationFields.FieldDataChild> fieldDataList, Map<String, List<DataIntegrationFields.Response>> responseMap, List<SObject> listToUpsert, Map<String, String> parentMapKeys) {
+		DataIntegrationFields.FieldDataChild defaults = (DataIntegrationFields.FieldDataChild) classType.newInstance();
 
-        String sObjectName = String.valueOf(sObj.getSObjectType());
+		for (DataIntegrationFields.FieldDataChild obj : fieldDataList) {
+			SObject deserializedObject = obj.serialize();
+			String deserializedKey = (String)deserializedObject.get(defaults.getFieldId());
+			String fieldKey = String.isNotEmpty(deserializedKey) ? defaults.getFieldId() : defaults.getFieldExternal();
 
-        Type t = Type.forName('DataIntegrationFields.' + sObjectName.replaceAll('__c|__mdt|__|_', '') +service+ 'Data');
+			validateObjectChild(obj, fieldKey, deserializedObject, listToUpsert, defaults.getRequiredFields(), responseMap);
+		}
+	}
 
-        if (t == null) {
-            throw new FactoryDataIntegrationException('Invalid defaults class.');
-        }
-
-        DataIntegrationFields.FieldDataChild defaults = (DataIntegrationFields.FieldDataChild) t.newInstance();
-
-        for(DataIntegrationFields.FieldDataChild Obj : fieldDataList){
-            SObject serializedObject = Obj.serialize();
-            
-			String serializedKey = (String)serializedObject.get(defaults.getFieldKey());
-            String fieldKey = String.isNotEmpty(serializedKey) ? defaults.getFieldKey() : defaults.getFieldExternal();
-
-            validateObjectChild(fieldKey, serializedObject, listToUpsert, responseMap, defaults.getRequiredFields(), parentMapKeys);
-        }
-    }
-
-    public class FactoryDataIntegrationException extends Exception {}
+	public class FactoryDataIntegrationException extends Exception {}
 }

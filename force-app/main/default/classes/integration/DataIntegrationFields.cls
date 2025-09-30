@@ -3,7 +3,8 @@ global with sharing class DataIntegrationFields {
 		List<String> getRequiredFields();
 		String getFieldKey();
 		String getFieldId();
-		SObject serialize(Map<String,Id> lookups);
+		String getExternalId();
+		SObject serialize();
 	}
 
 	public interface FieldDataChild {
@@ -11,7 +12,7 @@ global with sharing class DataIntegrationFields {
 		String getFieldId();
 		String getFieldExternal();
 		String getParentKey();
-		SObject serialize(Map<String,Id> lookups);
+		SObject serialize();
 	}
 
 	global class OrderINData implements FieldData { // extends OrderBase
@@ -31,20 +32,20 @@ global with sharing class DataIntegrationFields {
 
 		public List<OrderItemINData> orderItemList {get; set;}
 
-		public Order serialize(Map<String,Id> lookups) {
+		public Order serialize() {
 			return new Order(
 				Id				      = this.id,
 				ExternalId__c	      = this.externalId,
 				Status			      = this.status,
 				EffectiveDate	      = this.effectiveDate,
 				Account			      = new Account(ExternalId__c = this.accountExternalId),
-				Address__c		      = lookups.containsKey('Address'+this.addressExternalId) ? lookups.get('Address'+this.addressExternalId) : null,
-				ContactName__c	      = lookups.containsKey('Contact'+this.contactNameExternalId) ? lookups.get('Contact'+this.contactNameExternalId) : null,
-				ContractId		      = lookups.containsKey('Contract'+this.contractExternalId) ? lookups.get('Contract'+this.contractExternalId) : null,
+				Address__r		      = new AccountAddress__c(ExternalId__c = this.addressExternalId),
+				ContactName__r        = new Contact(ExternalId__c = this.contactNameExternalId),
+				Contract		      = new Contract(ExternalId__c = this.contractExternalId),
 				DeliveryDate__c	      = this.deliveryDate,
 				FreightType__c	      = this.freightType,
-				PayCondition__c	      = lookups.containsKey('PayCondition'+this.payConditionExternalId) ? lookups.get('PayCondition'+this.payConditionExternalId) : null,
-				DistributionCenter__c = lookups.containsKey('DistributionCenter'+this.distributionCenterExternalId) ? lookups.get('DistributionCenter'+this.distributionCenterExternalId) : null
+				PayCondition__r	      = new PayCondition__c(ExternalId__c = this.payConditionExternalId),
+				DistributionCenter__r = new DistributionCenter__c(ExternalId__c = this.distributionCenterExternalId)
 			);
 		}
 
@@ -87,13 +88,13 @@ global with sharing class DataIntegrationFields {
 		public String orderExternalId;
 		public String productExternalId;
 
-		public OrderItem serialize(Map<String,Id> lookups) {
+		public OrderItem serialize() {
 			OrderItem orderItem = new OrderItem(
 				ExternalId__c	= this.externalId,
 				Quantity		= this.quantity,
 				UnitPrice		= this.unitPrice,
-				OrderId			= lookups.containsKey('Order'+this.orderExternalId) ? lookups.get('Order'+this.orderExternalId) : null,
-				Product2Id		= lookups.containsKey('Product2'+this.productExternalId) ? lookups.get('Product2'+this.productExternalId) : null
+				Order			= new Order(ExternalId__c = this.orderExternalId),
+				Product2 		= new Product2(ExternalId__c = this.productExternalId)
 			);
 
 			return orderItem;
@@ -133,6 +134,7 @@ global with sharing class DataIntegrationFields {
 		public String sobjectType;
 		public Boolean hasError;
 		public String errorMessage;
+		public Boolean status;
 
 		public void success(String salesforceId, String externalId, String sobjectType){
 			this.salesforceId	= salesforceId;

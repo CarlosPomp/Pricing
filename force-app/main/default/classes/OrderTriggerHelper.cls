@@ -7,4 +7,8 @@ public with sharing class OrderTriggerHelper {
             }
         }
     }
+
+    public static void sendWhenActivate(List<Order> newRecordList) {
+        
+    }
 }

@@ -9,7 +9,7 @@ private class OrderItemTriggerHelper_Test {
         insert productHierarchy;
 
         Product2 product = (Product2) testFactory.createSObject(new Product2(ProductHierarchy__c = productHierarchy.Id, ProductionCost__c = 25));
-        insert product;
+        insert product; 
 
         AccountGroup__c accountGroup = (AccountGroup__c) testFactory.createSObject(new AccountGroup__c());
         insert accountGroup;
@@ -79,14 +79,17 @@ private class OrderItemTriggerHelper_Test {
         PricebookEntry pricebookEntry = [SELECT Id FROM PricebookEntry LIMIT 1];
         Product2 product = [SELECT Id FROM Product2 LIMIT 1];
 
-        OrderItem orderItem = new OrderItem(
+        Database.SaveResult result = Database.insert(new OrderItem(
             OrderId = order.Id,
             PricebookEntryId = pricebookEntry.Id,
             Product2Id = product.Id,
             Quantity = 1,
-            UnitPrice = 40);
-        Database.SaveResult result = Database.insert(orderItem, false);
-
+            UnitPrice = 40), false);
+        
+		System.assert(result.isSuccess());
+        
+        OrderItem orderItem = [SELECT Id, FullPrice__c FROM OrderItem LIMIT 1];
+        
         System.assertEquals(47.08, orderItem.FullPrice__c);
     }
 }

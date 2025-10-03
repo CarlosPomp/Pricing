@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ValidateCountry</fullName>
+    <active>true</active>
+    <errorConditionFormula>(ISBLANK( City__c ) &amp;&amp; ISBLANK( State__c ) &amp;&amp; ISBLANK( Country__c )) || (NOT(ISBLANK( Country__c )) &amp;&amp; (NOT(ISBLANK( City__c )) || NOT(ISBLANK( State__c ))))</errorConditionFormula>
+    <errorDisplayField>Country__c</errorDisplayField>
+    <errorMessage>Country must be filled in IF AND ONLY IF neither City and State are filled in.</errorMessage>
+</ValidationRule>

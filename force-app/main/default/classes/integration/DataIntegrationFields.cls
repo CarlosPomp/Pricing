@@ -17,41 +17,40 @@ global with sharing class DataIntegrationFields {
 
 	global class OrderINData implements FieldData { // extends OrderBase
 		public String id;
-		public String externalId;
+		public String orderCode;
 		public String status;
 		public Date effectiveDate;
-		public String accountExternalId;
-		public String addressExternalId;
-		public String contactNameExternalId;
-		public String contractExternalId;
+		public String accountCode;
+		public String addressCode;
 		public Date deliveryDate;
 		public String freightType;
-		public String payConditionExternalId;
-		public String distributionCenterExternalId;
-		public List<DataIntegrationFields.OrderItemINData> orderItems;
+		public String paymentCode;
+		public String distributionCenterCode;
+		public String obs;
 
-		public List<OrderItemINData> orderItemList {get; set;}
+		public List<OrderItemINData> orderItems {get; set;}
 
 		public Order serialize() {
+			System.debug('OrderINData');
+            if (this.status != 'Draft' && this.status != 'In Progress' && this.status != 'Approved' && this.status != 'Finished' && this.status != 'Waiting Approval') this.status = 'Draft';
 			return new Order(
 				Id				      = this.id,
-				ExternalId__c	      = this.externalId,
+				ExternalId__c	      = this.orderCode,
 				Status			      = this.status,
 				EffectiveDate	      = this.effectiveDate,
-				Account			      = new Account(ExternalId__c = this.accountExternalId),
-				Address__r		      = new AccountAddress__c(ExternalId__c = this.addressExternalId),
-				ContactName__r        = new Contact(ExternalId__c = this.contactNameExternalId),
-				Contract		      = new Contract(ExternalId__c = this.contractExternalId),
+				Account			      = new Account(ExternalId__c = this.accountCode),
+				Address__r		      = new AccountAddress__c(ExternalId__c = this.addressCode),
 				DeliveryDate__c	      = this.deliveryDate,
 				FreightType__c	      = this.freightType,
-				PayCondition__r	      = new PayCondition__c(ExternalId__c = this.payConditionExternalId),
-				DistributionCenter__r = new DistributionCenter__c(ExternalId__c = this.distributionCenterExternalId)
+				PayCondition__r	      = new PayCondition__c(ExternalId__c = this.paymentCode),
+				DistributionCenter__r = new DistributionCenter__c(ExternalId__c = this.distributionCenterCode),
+				Observation__c		  = this.obs
 			);
 		}
 
 		public List<String> getRequiredFields() {
 			return new List<String>{
-				'DeliveryDate',
+				'DeliveryDate__c',
 				'ExternalId__c',
 				'EffectiveDate',
 				'FreightType__c',
@@ -76,25 +75,29 @@ global with sharing class DataIntegrationFields {
 			return 'Id';
 		}
 		public String getExternalId() {
-			return this.externalId;
+			return this.orderCode;
 		}
 	}
 
 	global class OrderItemINData implements FieldDataChild { // extends OrderItemBase
 		public String id;
-		public String externalId;
+		public String itemCode;
 		public Decimal quantity;
 		public Decimal unitPrice;
-		public String orderExternalId;
-		public String productExternalId;
+		public Decimal listPrice;
+		public Boolean totvsItem;
+		public String orderCode;
+		public String productCode;
 
 		public OrderItem serialize() {
 			OrderItem orderItem = new OrderItem(
-				ExternalId__c	= this.externalId,
+				ExternalId__c	= this.itemCode,
 				Quantity		= this.quantity,
 				UnitPrice		= this.unitPrice,
-				Order			= new Order(ExternalId__c = this.orderExternalId),
-				Product2 		= new Product2(ExternalId__c = this.productExternalId)
+				ListPrice		= this.listPrice,
+				isOnTotvs__c	= this.totvsItem,
+				Order			= new Order(ExternalId__c = this.orderCode),
+				Product2 		= new Product2(ExternalId__c = this.productCode)
 			);
 
 			return orderItem;
@@ -124,7 +127,7 @@ global with sharing class DataIntegrationFields {
 			return 'OrderId';
 		}
 		public String getParentKey() {
-			return this.orderExternalId;
+			return this.orderCode;
 		}
 	}
 

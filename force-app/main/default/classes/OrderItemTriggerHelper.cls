@@ -6,9 +6,15 @@ public with sharing class OrderItemTriggerHelper {
     }
 
     private static void verifyActivation(List<OrderItem> recordList) {
-        List<OrderItem> orders = [SELECT Id, Order.Status FROM OrderItem WHERE Id IN :recordList];
-        for (OrderItem order : orders) {
-            if (order.Order.Status != 'Draft' && order.Order.Status != 'In Progress') {
+        Set<Id> orderIds = new Set<Id>();
+        
+        for (OrderItem orderItem : recordList) {
+            orderIds.add(orderItem.OrderId);
+        }
+        
+        List<Order> orders = [SELECT Id, Status FROM Order WHERE Id IN :orderIds];
+        for (Order order : orders) {
+            if (order.Status != 'Draft' && order.Status != 'In Progress') {
                 order.addError('Cannot create order item on activated order');
             }
         }

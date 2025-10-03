@@ -1,19 +1,20 @@
-@RestResource(urlMapping='/upsertOrder/*')
-global with sharing class IntegrationInboundOrder {
+@RestResource(urlMapping='/upsertOneOrder/*')
+global with sharing class IntegrationInboundOneOrder {
 	@HttpPost
-	global static List<DataIntegrationFields.Response> upsertOrder(List<DataIntegrationFields.OrderINData> request) {
-		System.debug('requestList => ' + request);
+	global static DataIntegrationFields.Response upsertOrder(DataIntegrationFields.OrderINData request) {
+		List<DataIntegrationFields.OrderINData> requestList = new List<DataIntegrationFields.OrderINData>{ request };
+		System.debug('requestList => ' + requestList);
 		Boolean hasError = false;
 		Boolean hasDeleted = false;
 		String orderExternalIds = '';
 		List<Order> orderToUpsertList = new List<Order>();
 		Map<String, String> orderExternalIdToOrderItem = new Map<String, String>();
 		List<DataIntegrationFields.ResponseParent> orderResponseList = new List<DataIntegrationFields.ResponseParent>();
-		List<DataIntegrationFields.OrderItemINData> orderItemToUpsertList = fillOrderExternalIdInOrderItem(request, orderExternalIdToOrderItem);
+		List<DataIntegrationFields.OrderItemINData> orderItemToUpsertList = fillOrderExternalIdInOrderItem(requestList, orderExternalIdToOrderItem);
 		Map<String, List<DataIntegrationFields.Response>> orderItemResponseList = new Map<String, List<DataIntegrationFields.Response>>();
 
 		// Converting template to object list and validating required fields
-		orderExternalIds = FactoryDataIntegration.convertSObject(new Order(), 'IN', request, orderResponseList, orderToUpsertList);
+		orderExternalIds = FactoryDataIntegration.convertSObject(new Order(), 'IN', requestList, orderResponseList, orderToUpsertList);
 		// Upserting records (Order)
 		hasError = IntegrationUtils.upsertRecords(
 			Database.upsert(orderToUpsertList, Order.ExternalId__c, false), orderResponseList, orderToUpsertList, Order.ExternalId__c
@@ -26,21 +27,21 @@ global with sharing class IntegrationInboundOrder {
 		// Fill response list with items
 		if (!orderItemResponseList.isEmpty()) hasError = fillResponseList(orderResponseList, orderItemResponseList);
 
-		String endpoint = System.Url.getOrgDomainUrl().toExternalForm() + '/services/apexrest/upsertOrder/*';
+		String endpoint = System.Url.getOrgDomainUrl().toExternalForm() + '/services/apexrest/upsertOneOrder/*';
 		String integrationLogId = IntegrationLog.createLog(
-			'Order', orderExternalIds, 'Inbound', JSON.serialize(request), JSON.serialize(orderResponseList), endpoint, hasError, hasDeleted
+			'Order', orderExternalIds, 'Inbound', JSON.serialize(requestList), JSON.serialize(orderResponseList), endpoint, hasError, hasDeleted
 		);
 		if (integrationLogId != null) updateOrderWithIntegrationLogId(orderToUpsertList, integrationLogId, 'IN');
 
 		System.debug('orderResponseList => ' + orderResponseList);
-		return orderResponseList;
+		return orderResponseList[0];
 	}
 
-	public static List<DataIntegrationFields.OrderItemINData> fillOrderExternalIdInOrderItem(List<DataIntegrationFields.OrderINData> request,
+	public static List<DataIntegrationFields.OrderItemINData> fillOrderExternalIdInOrderItem(List<DataIntegrationFields.OrderINData> requestList,
 																							Map<String, String> orderExternalIdToOrderItem) {
 		List<DataIntegrationFields.OrderItemINData> orderItemToUpsertList = new List<DataIntegrationFields.OrderItemINData>();
 
-		for (DataIntegrationFields.OrderINData order : request){
+		for (DataIntegrationFields.OrderINData order : requestList){
 			if (order.orderItems != null) {
 				// Putting the Order's ExternalId parameter in the OrderItem
 				for (DataIntegrationFields.OrderItemINData orderItem : order.orderItems) {
@@ -64,7 +65,6 @@ global with sharing class IntegrationInboundOrder {
 		FactoryDataIntegration.convertSObjectChild(new OrderItem(), 'IN', orderItemRequestList, responseMap, orderItemToUpsertList);
 
 		// Upserting records
-        System.debug(orderItemToUpsertList);
 		List<Database.UpsertResult> upsertResults = Database.upsert(orderItemToUpsertList, OrderItem.ExternalId__c, false);
 		IntegrationUtils.upsertChildRecords(upsertResults, responseMap, orderItemToUpsertList, orderExternalIdToOrderItem, OrderItem.ExternalId__c);
 

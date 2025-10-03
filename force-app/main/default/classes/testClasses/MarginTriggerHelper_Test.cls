@@ -110,4 +110,20 @@ private class MarginTriggerHelper_Test {
         System.assert(result.getErrors().size() > 0);
         System.assertEquals('Duplicate margin found.', result.getErrors()[0].getMessage());
     }
+    
+    @isTest
+    static void testUpdateSuccesfully() {
+        Country__c country = [SELECT Id FROM Country__c LIMIT 1];
+        DistributionCenter__c distributionCenter = [SELECT Id FROM DistributionCenter__c LIMIT 1];
+
+        Margin__c margin = [SELECT Id, City__c FROM Margin__c WHERE Value__c = 12 LIMIT 1];
+        margin.City__c = null;
+        margin.Country__c = country.Id;
+        margin.DistributionCenter__c = distributionCenter.Id;
+
+        Database.SaveResult result = Database.update(margin, false);
+
+        System.assert(result.isSuccess());
+        System.assert(result.getErrors().size() == 0);
+    }
 }

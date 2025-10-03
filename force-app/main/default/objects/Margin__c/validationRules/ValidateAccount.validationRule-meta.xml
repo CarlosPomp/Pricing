@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ValidateAccount</fullName>
+    <active>true</active>
+    <errorConditionFormula>(ISBLANK( Account__c ) &amp;&amp; ISBLANK( AccountGroup__c )) || (NOT(ISBLANK( Account__c )) &amp;&amp; NOT(ISBLANK( AccountGroup__c )))</errorConditionFormula>
+    <errorMessage>Please fill in either Account or Account Group, not none and not both.</errorMessage>
+</ValidationRule>

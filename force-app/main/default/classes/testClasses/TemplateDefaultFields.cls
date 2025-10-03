@@ -3,23 +3,6 @@ public with sharing class TemplateDefaultFields {
 		Map<String, Object> getFieldDefaults(Decimal countSObjectCreated);
 	}
 
-	public class UserDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Username' => 'test' + Datetime.now().getTime() +'@test.com',
-				'LastName' => 'taak',
-				'Email' => 'test@taak.com',
-				'Alias' => 'ttst',
-				'CommunityNickname' => 'ttst',
-				'TimeZoneSidKey' => 'America/Sao_Paulo',
-				'LocaleSidKey' => 'pt_BR',
-				'EmailEncodingKey' => 'ISO-8859-1',
-				'LanguageLocaleKey' => 'pt_BR',
-				'IsActive' => true
-			};
-		}
-	}
-
 	public class AccountDefaults implements FieldDefaults {
 		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
 			return new Map<String, Object>{
@@ -61,14 +44,6 @@ public with sharing class TemplateDefaultFields {
 		}
 	}
 
-	public class AssetDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Name' => 'Asset - Teste ' + String.valueOf(countSObjectCreated)
-			};
-		}
-	}
-
 	public class OrderDefaults implements FieldDefaults {
 		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
 			return new Map<String, Object>{
@@ -85,18 +60,6 @@ public with sharing class TemplateDefaultFields {
 			return new Map<String, Object>{
                 'Quantity' => 1,
                 'UnitPrice' => 100
-			};
-		}
-	}
-
-	public class ProblemDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Subject' => 'Problem Test',
-				'Urgency' => 'Low',
-				'Impact' => 'Low',
-				'Priority' => 'Low',
-				'Status' => 'New'
 			};
 		}
 	}
@@ -126,62 +89,6 @@ public with sharing class TemplateDefaultFields {
 			return new Map<String, Object>{
 				'UnitPrice' => 100,
 				'IsActive' => true
-			};
-		}
-	}
-
-	public class TaskDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Priority' => 'Low',
-				'Subject' => 'Task Test ' + String.valueOf(countSObjectCreated),
-				'StartDate__c' => Date.today().addDays(1),
-				'EndDate__c' => Date.today().addDays(5)
-			};
-		}
-	}
-
-	public class EventDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Subject' => 'Email',
-				'StartDate__c' => Date.today().addDays(1),
-				'EndDate__c' => Date.today().addDays(5)
-			};
-		}
-	}
-
-	public class EventTypeDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Name' => 'Event Type Test ' + String.valueOf(countSObjectCreated),
-				'IsActive__c' => true
-			};
-		}
-	}
-
-	public class OpportunityDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'Name' => 'Opportunity Test ' + String.valueOf(countSObjectCreated),
-				'StageName' => 'Qualification',
-				'CloseDate' => Date.today().addDays(1)
-			};
-		}
-	}
-
-	public class OpportunityLineItemDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{};
-		}
-	}
-
-	public class LeadDefaults implements FieldDefaults {
-		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
-			return new Map<String, Object>{
-				'LastName' => 'Lead Test ' + String.valueOf(countSObjectCreated),
-				'Company' => 'Lead Company Test ' + String.valueOf(countSObjectCreated),
-				'Status' => 'New'
 			};
 		}
 	}
